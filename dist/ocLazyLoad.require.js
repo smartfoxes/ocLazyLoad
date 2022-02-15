@@ -1,6 +1,6 @@
 /**
  * oclazyload - Load modules on demand (lazy load) with angularJS
- * @version v1.0.9
+ * @version v1.1.0
  * @link https://github.com/ocombe/ocLazyLoad
  * @license MIT
  * @author Olivier Combe <olivier.combe@gmail.com>
@@ -779,6 +779,16 @@
 
     var bootstrapFct = angular.bootstrap;
     angular.bootstrap = function (element, modules, config) {
+        // Clean state from previous bootstrap
+        regModules = ['ng', 'oc.lazyLoad'];
+        regInvokes = {};
+        regConfigs = [];
+        modulesToLoad = [];
+        realModules = [];
+        recordDeclarations = [];
+        broadcast = angular.noop;
+        runBlocks = {};
+        justLoaded = [];
         // we use slice to make a clean copy
         angular.forEach(modules.slice(), function (module) {
             _addToLoadList(module, true, true);
@@ -892,7 +902,7 @@
                     el.onload = el['onreadystatechange'] = null;
                     loaded = 1;
                     $delegate._broadcast('ocLazyLoad.fileLoaded', path);
-                    deferred.resolve();
+                    deferred.resolve(el);
                 };
                 el.onerror = function () {
                     filesCache.remove(path);
@@ -1275,7 +1285,8 @@
                         url = $delegate.cacheBuster(url);
                     }
 
-                    $http.get(url, params).success(function (data) {
+                    $http.get(url, params).then(function (response) {
+                        var data = response.data;
                         if (angular.isString(data) && data.length > 0) {
                             angular.forEach(angular.element(data), function (node) {
                                 if (node.nodeName === 'SCRIPT' && node.type === 'text/ng-template') {
@@ -1287,8 +1298,8 @@
                             filesCache.put(url, true);
                         }
                         deferred.resolve();
-                    }).error(function (err) {
-                        deferred.reject(new Error('Unable to load template file "' + url + '": ' + err));
+                    })['catch'](function (response) {
+                        deferred.reject(new Error('Unable to load template file "' + url + '": ' + response.data));
                     });
                 });
                 return $q.all(promises).then(function () {
