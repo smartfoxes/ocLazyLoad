@@ -1,6 +1,6 @@
 /**
  * oclazyload - Load modules on demand (lazy load) with angularJS
- * @version v1.0.9
+ * @version v1.1.0
  * @link https://github.com/ocombe/ocLazyLoad
  * @license MIT
  * @author Olivier Combe <olivier.combe@gmail.com>
@@ -779,6 +779,16 @@
 
     var bootstrapFct = angular.bootstrap;
     angular.bootstrap = function (element, modules, config) {
+        // Clean state from previous bootstrap
+        regModules = ['ng', 'oc.lazyLoad'];
+        regInvokes = {};
+        regConfigs = [];
+        modulesToLoad = [];
+        realModules = [];
+        recordDeclarations = [];
+        broadcast = angular.noop;
+        runBlocks = {};
+        justLoaded = [];
         // we use slice to make a clean copy
         angular.forEach(modules.slice(), function (module) {
             _addToLoadList(module, true, true);
@@ -892,7 +902,7 @@
                     el.onload = el['onreadystatechange'] = null;
                     loaded = 1;
                     $delegate._broadcast('ocLazyLoad.fileLoaded', path);
-                    deferred.resolve();
+                    deferred.resolve(el);
                 };
                 el.onerror = function () {
                     filesCache.remove(path);
@@ -1283,7 +1293,8 @@
                         url = $delegate.cacheBuster(url);
                     }
 
-                    $http.get(url, params).success(function (data) {
+                    $http.get(url, params).then(function (response) {
+                        var data = response.data;
                         if (angular.isString(data) && data.length > 0) {
                             angular.forEach(angular.element(data), function (node) {
                                 if (node.nodeName === 'SCRIPT' && node.type === 'text/ng-template') {
@@ -1295,8 +1306,8 @@
                             filesCache.put(url, true);
                         }
                         deferred.resolve();
-                    }).error(function (err) {
-                        deferred.reject(new Error('Unable to load template file "' + url + '": ' + err));
+                    })['catch'](function (response) {
+                        deferred.reject(new Error('Unable to load template file "' + url + '": ' + response.data));
                     });
                 });
                 return $q.all(promises).then(function () {
@@ -1313,64 +1324,64 @@
 })(angular);
 // Array.indexOf polyfill for IE8
 if (!Array.prototype.indexOf) {
-    Array.prototype.indexOf = function (searchElement, fromIndex) {
-        var k;
+        Array.prototype.indexOf = function (searchElement, fromIndex) {
+                var k;
 
-        // 1. Let O be the result of calling ToObject passing
-        //    the this value as the argument.
-        if (this == null) {
-            throw new TypeError('"this" is null or not defined');
-        }
+                // 1. Let O be the result of calling ToObject passing
+                //    the this value as the argument.
+                if (this == null) {
+                        throw new TypeError('"this" is null or not defined');
+                }
 
-        var O = Object(this);
+                var O = Object(this);
 
-        // 2. Let lenValue be the result of calling the Get
-        //    internal method of O with the argument "length".
-        // 3. Let len be ToUint32(lenValue).
-        var len = O.length >>> 0;
+                // 2. Let lenValue be the result of calling the Get
+                //    internal method of O with the argument "length".
+                // 3. Let len be ToUint32(lenValue).
+                var len = O.length >>> 0;
 
-        // 4. If len is 0, return -1.
-        if (len === 0) {
-            return -1;
-        }
+                // 4. If len is 0, return -1.
+                if (len === 0) {
+                        return -1;
+                }
 
-        // 5. If argument fromIndex was passed let n be
-        //    ToInteger(fromIndex); else let n be 0.
-        var n = +fromIndex || 0;
+                // 5. If argument fromIndex was passed let n be
+                //    ToInteger(fromIndex); else let n be 0.
+                var n = +fromIndex || 0;
 
-        if (Math.abs(n) === Infinity) {
-            n = 0;
-        }
+                if (Math.abs(n) === Infinity) {
+                        n = 0;
+                }
 
-        // 6. If n >= len, return -1.
-        if (n >= len) {
-            return -1;
-        }
+                // 6. If n >= len, return -1.
+                if (n >= len) {
+                        return -1;
+                }
 
-        // 7. If n >= 0, then Let k be n.
-        // 8. Else, n<0, Let k be len - abs(n).
-        //    If k is less than 0, then let k be 0.
-        k = Math.max(n >= 0 ? n : len - Math.abs(n), 0);
+                // 7. If n >= 0, then Let k be n.
+                // 8. Else, n<0, Let k be len - abs(n).
+                //    If k is less than 0, then let k be 0.
+                k = Math.max(n >= 0 ? n : len - Math.abs(n), 0);
 
-        // 9. Repeat, while k < len
-        while (k < len) {
-            // a. Let Pk be ToString(k).
-            //   This is implicit for LHS operands of the in operator
-            // b. Let kPresent be the result of calling the
-            //    HasProperty internal method of O with argument Pk.
-            //   This step can be combined with c
-            // c. If kPresent is true, then
-            //    i.  Let elementK be the result of calling the Get
-            //        internal method of O with the argument ToString(k).
-            //   ii.  Let same be the result of applying the
-            //        Strict Equality Comparison Algorithm to
-            //        searchElement and elementK.
-            //  iii.  If same is true, return k.
-            if (k in O && O[k] === searchElement) {
-                return k;
-            }
-            k++;
-        }
-        return -1;
-    };
+                // 9. Repeat, while k < len
+                while (k < len) {
+                        // a. Let Pk be ToString(k).
+                        //   This is implicit for LHS operands of the in operator
+                        // b. Let kPresent be the result of calling the
+                        //    HasProperty internal method of O with argument Pk.
+                        //   This step can be combined with c
+                        // c. If kPresent is true, then
+                        //    i.  Let elementK be the result of calling the Get
+                        //        internal method of O with the argument ToString(k).
+                        //   ii.  Let same be the result of applying the
+                        //        Strict Equality Comparison Algorithm to
+                        //        searchElement and elementK.
+                        //  iii.  If same is true, return k.
+                        if (k in O && O[k] === searchElement) {
+                                return k;
+                        }
+                        k++;
+                }
+                return -1;
+        };
 }

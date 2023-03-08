@@ -1,6 +1,6 @@
 {
   "name": "oclazyload",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Load modules on demand (lazy load) with angularJS",
   "main": "dist/ocLazyLoad.js",
   "author": "Olivier Combe <olivier.combe@gmail.com>",
@@ -29,6 +29,9 @@
   ],
   "bugs": {
     "url": "https://github.com/ocombe/ocLazyLoad/issues"
+  },
+  "overrides": {
+    "graceful-fs": "^4.2.10"
   },
   "devDependencies": {
     "bower": "~1.4.1",
